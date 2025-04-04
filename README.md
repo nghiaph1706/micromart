@@ -141,6 +141,6 @@ MICROMART provides a robust, modular, and scalable e-commerce platform using a m
 
 ## Contact
 Please feel free to contact me if you need any further information.
-- Name: Phạm Lễ Nghĩa
-- Email: [your-email@example.com](mailto:your-email@example.com)
-- LinkedIn: [your-linkedin-profile](https://www.linkedin.com/in/your-profile/)
+- Name: Pham Nghia
+- Email: [nghiaph1706@gmail.com](mailto:nghiaph1706@gmail.com)
+- LinkedIn: [linkedin.com/in/nghiaph1706](https://www.linkedin.com/in/nghiaph1706)
