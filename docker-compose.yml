@@ -1,0 +1,205 @@
+version: '3.8'
+
+services:
+  # RabbitMQ service
+  rabbitmq:
+    image: rabbitmq:management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672" 
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - micromart-net
+
+  # Authentification service
+  auth-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: auth_admin
+      POSTGRES_PASSWORD: auth_pass123
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+
+  auth-service:
+    build:
+      context: ./auth-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - auth-db
+      - rabbitmq
+
+  # User service
+  user-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: user_db
+      MYSQL_USER: user_admin
+      MYSQL_PASSWORD: user_pass123
+    ports:
+      - "3306:3306"
+
+  user-service:
+    build:
+      context: ./user-service
+    ports:
+      - "9000:9000"
+    environment:
+      - APP_ENV=local
+    depends_on:
+      - user-db
+      - rabbitmq
+
+  # Product service
+  product-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: product_admin
+      POSTGRES_PASSWORD: product_pass123
+      POSTGRES_DB: product_db
+    ports:
+      - "5433:5432"
+
+  product-service:
+    build:
+      context: ./product-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - product-db
+      - rabbitmq
+
+  # Order service
+  order-db:
+    image: mysql:8.0
+    environment: 
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: order_db
+      MYSQL_USER: order_admin
+      MYSQL_PASSWORD: order_pass123
+    ports:
+      - "3307:3306"
+
+  order-service:
+    build:
+      context: ./order-service
+    ports:
+      - "8000:8000"
+    depends_on:
+      - order-db
+      - rabbitmq
+
+  # Payment service
+  payment-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: payment_admin
+      POSTGRES_PASSWORD: payment_pass123
+      POSTGRES_DB: payment_db
+    ports:
+      - "5434:5432"
+
+  payment-service:
+    build:
+      context: ./payment-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - payment-db
+      - rabbitmq
+
+  # Notification service
+  notification-redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+  
+  notification-mongodb:
+    image: mongo:6
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_admin
+      MONGO_INITDB_ROOT_PASSWORD: mongo_pass123
+    ports:
+      - "27017:27017"
+
+  notification-service:
+    build:
+      context: ./notification-service
+    ports:
+      - "5000:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - notification-redis
+      - notification-mongodb
+      - rabbitmq
+
+   # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:v2.37.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - micromart-net
+
+  # Grafana for visualizing metrics
+  grafana:
+    image: grafana/grafana:8.4.2
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - micromart-net
+
+  # ELK Stack
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.3.3
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xmx1g -Xms1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks:
+      - micromart-net
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.3.3
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    networks:
+      - micromart-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.3.3
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - micromart-net
+
+volumes:
+  esdata:
+  rabbitmq_data:
+
+networks:
+  micromart-net:
+    driver: bridge
